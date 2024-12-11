@@ -1,96 +1,115 @@
-from PyQt5 import QtWidgets
-import main
+from PyQt5.QtCore import QDir,Qt, QUrl
+from PyQt5.QtMultimedia import QMediaContent,QMediaPlayer
+from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import QMainWindow, QWidget,QPushButton,QAction
+from PyQt5.QtGui import QIcon
+import sys
 
-class MyWindow(QtWidgets.QWidget):
-    def __init__(self):
-        QtWidgets.QWidget.__init__(self)
-        self.ui = main.Ui_Form()
-        self.ui.setupUi(self)
-        self.a = 0
-        self.ui.pushButton.clicked.connect(self.startTest)
-        self.ui.pushButton_2.clicked.connect(self.vopros1)
-        self.ui.pushButton_9.clicked.connect(self.nazad1)
-        self.ui.pushButton_3.clicked.connect(self.vopros2)
-        self.ui.pushButton_10.clicked.connect(self.nazad2)
-        self.ui.pushButton_4.clicked.connect(self.vopros3)
-        self.ui.pushButton_11.clicked.connect(self.nazad3)
-        self.ui.pushButton_5.clicked.connect(self.vopros4)
-        self.ui.pushButton_12.clicked.connect(self.nazad4)
-        self.ui.pushButton_6.clicked.connect(self.vopros5)
-        self.ui.pushButton_13.clicked.connect(self.nazad5)
-        self.ui.pushButton_7.clicked.connect(self.vopros6)
-        self.ui.pushButton_14.clicked.connect(self.nazad6)
-        self.ui.pushButton_8.clicked.connect(self.domoi)
+class VideoWindow(QMainWindow):
 
-    def startTest(self):
-        self.ui.stackedWidget.setCurrentIndex(1)
-    
-    def vopros1(self):
-        if self.ui.radioButton.isChecked():
-            self.a += 1
-            self.ui.stackedWidget.setCurrentIndex(2)
-    def nazad1(self):
-        self.ui.stackedWidget.setCurrentIndex(0)
+    def __init__(self, parent= None):
+        super(VideoWindow, self).__init__(parent)
+        self.setWindowTitle("Видеоплеер")
 
-    def vopros2(self):
-        if self.ui.radioButton_7.isChecked():
-            self.a += 1
-            self.ui.stackedWidget.setCurrentIndex(3)
-    def nazad2(self):        
-            self.ui.stackedWidget.setCurrentIndex(0)
+        self.mediaPlayer = QMediaPlayer(None,QMediaPlayer.VideoSurface)
 
-    def vopros3(self):
-        if self.ui.radioButton_10.isChecked():
-            self.a += 1
-            self.ui.stackedWidget.setCurrentIndex(4)
-    def nazad3(self):        
-            self.ui.stackedWidget.setCurrentIndex(0)        
-    
-    def vopros4(self):
-        if self.ui.radioButton_15.isChecked():
-            self.a += 1
-            self.ui.stackedWidget.setCurrentIndex(5)
-    def nazad4(self):        
-            self.ui.stackedWidget.setCurrentIndex(0)
-            
-    def vopros5(self):
-        if self.ui.radioButton_19.isChecked():
-            self.a += 1
-            self.ui.stackedWidget.setCurrentIndex(6)
-    def nazad5(self):        
-            self.ui.stackedWidget.setCurrentIndex(0)
+        videoWidget = QVideoWidget()
 
-    def vopros6(self):
-        if self.ui.radioButton_22.isChecked():
-            self.a += 1
-            self.ui.stackedWidget.setCurrentIndex(7)
-    def nazad6(self):        
-        self.ui.stackedWidget.setCurrentIndex(0)
+        self.playButton = QPushButton()
+        self.playButton.setEnabled(False)
+        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.playButton.clicked.connect(self.play)
 
-        ocenka = {
-            0 : 2,
-            4 : 3, 
-            5 : 4,
-            6 : 5,
-        }
-        self.ui.label_17.setText(f"Баллы: {self.a}")
-        self.ui.label_18.setText(f"Оценка: {ocenka[self.a]}")
+        self.positionSlider = QSlider(Qt.Horizontal)
+        self.positionSlider.setRange(0,0)
+        self.positionSlider.sliderMoved.connect(self.setPosition)
 
-    def domoi(self):
-        self.ui.stackedWidget.setCurrentIndex(0)
-        self.a = 0
-        for i in range(1, 10):
-            btn = getattr(self.ui, "radioButton_{}".format(i))
-            btn.setAutoExclusive(False)
-            btn.setChecked(False)
-            btn.repaint()
-            btn.setAutoExclusive(True)
-            btn.show()
+        self.errorLabel = QLabel()
+        self.errorLabel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        
+
+        openAction = QAction(QIcon('open.png'), '&Open', self)
+        openAction.setShortcut('Ctrl+O')
+        openAction.setStatusTip('Open movie')
+        openAction.triggered.connect(self.openFile)
 
 
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    window = MyWindow()
-    window.show()
+        exitAction = QAction(QIcon('exit.png'), '&Exit', self)
+        exitAction.setShortcut('Ctrl+Q')
+        exitAction.setStatusTip('Exit application')
+        exitAction.triggered.connect(self.exitCall)
+
+        menuBar = self.menuBar()
+        fileMenu = menuBar.addMenu('&File')
+
+        fileMenu.addAction(openAction)
+        fileMenu.addAction(exitAction)
+
+
+
+        wid =QWidget(self)
+        self.setCentralWidget(wid)
+
+
+        controlLayout = QHBoxLayout()
+        controlLayout.setContentsMargins(0,0,0,0)
+        controlLayout.addWidget(self.playButton)
+        controlLayout.addWidget(self.positionSlider)
+
+        layout = QVBoxLayout()
+        layout.addWidget(videoWidget)
+        layout.addLayout(controlLayout)
+        layout.addWidget(self.errorLabel)
+
+
+        wid.setLayout(layout)
+
+        self.mediaPlayer.setVideoOutput(videoWidget)
+        self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
+        self.mediaPlayer.positionChanged.connect(self.positionChanged)
+        self.mediaPlayer.durationChanged.connect(self.durationChanged)
+        self.mediaPlayer.error.connect(self.handleError)
+
+    def openFile(self):
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie", QDir.homePath())
+
+        if fileName != '':
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
+            self.playButton.setEnabled(True)
+
+    def exitCall(self):
+        sys.exit(app.exec_())
+
+    def play(self):
+        if self.mediaPlayer.state() == QMediaPlayer.PlayerState:
+            self.mediaPlayer.pause()
+        else:
+            self.mediaPlayer.play()
+
+    def mediaStateChanged(self, state):
+        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+            self.playButton.setIcon(self.style().standardIcon(QStyle.Sp_MediaPause))
+        else:
+            self.playButton.setIcon(self.style().standardIcon(QStyle.Sp_MediaPlay))
+
+    def  positionChanged(self, position):
+        self.positionSlider.setValue(position)
+
+    def durationChanged(self, duration):
+        self.positionSlider.setRange(0, duration)
+
+    def setPosition(self, position):
+        self.mediaPlayer.setPosition(position)
+
+    def handleError(self):
+        self.playButton.setEnabled(False)
+        self.errorLabel.setText("Error:" + self.mediaPlayer.errorString())
+
+if __name__ == '__main__': 
+    app = QApplication(sys.argv)
+    player = VideoWindow()
+    player.resize(640, 480)
+    player.show()
     sys.exit(app.exec_())
+        

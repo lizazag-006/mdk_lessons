@@ -1,0 +1,77 @@
+from PyQt5 import QtWidgets
+import main1, main2, main3
+import sqlite3
+
+class Authorization(QtWidgets.QWidget):
+    def __init__(self):
+        QtWidgets.QWidget.__init__(self)
+        self.ui = main1.Ui_Form()
+        self.ui.setupUi(self)
+        self.ui.pushButton_2.clicked.connect(self.reg_form)
+        self.ui.pushButton.clicked.connect(self.auto)
+    
+    def reg_form(self):
+        auto.close()
+        reg.show()
+    
+    def auto(self):
+        name = self.ui.lineEdit.text()
+        password = self.ui.lineEdit_2.text()
+        
+        db = sqlite3.connect("users.db")
+        cursor = db.cursor()
+        cursor.execute(f'SELECT name, last_name FROM users WHERE login = "{name}" and password ="{password}"')
+        result = cursor.fetchone()
+       
+        if result is None:
+            QtWidgets.QMessageBox.about(None,"Оповещение","Неверные данные")
+        else:
+            auto.close()
+            main3.show()
+            main3.ui.label.setText(str(result[0]))
+            main3.ui.label_2.setText(str(result[1]))
+
+class Registration(QtWidgets.QWidget):
+    def __init__(self):
+        QtWidgets.QWidget.__init__(self)
+        self.ui = main2.Ui_Form()
+        self.ui.setupUi(self)
+        self.ui.pushButton.clicked.connect(self.zareg)
+        self.ui.pushButton_2.clicked.connect(self.cancel)
+    
+    def zareg(self):
+        db = sqlite3.connect("users.db")
+        cursor = db.cursor()
+        name = self.ui.lineEdit.text()
+        last_name = self.ui.lineEdit_2.text()
+        login = self.ui.lineEdit_3.text()
+        password = self.ui.lineEdit_4.text()
+        row = (name, last_name, login, password)
+        command = "INSERT INTO users (name, last_name, login, password) VALUES (?, ?, ?, ?)"
+        cursor.execute(command, row)
+        db.commit()
+        QtWidgets.QMessageBox.information(None, "Регистрация", "Вы успешно зарегистрировались", buttons=QtWidgets.QMessageBox.Ok, defaultButton=QtWidgets.QMessageBox.Ok)
+        
+        reg.close()
+        auto.show()
+    
+    def cancel(self):
+        reg.close()
+        auto.show()
+
+class MainWindow(QtWidgets.QWidget):
+    def __init__(self):
+        QtWidgets.QWidget.__init__(self)
+        self.ui = main3.Ui_Form()
+        self.ui.setupUi(self)
+
+
+if __name__=="__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    auto = Authorization()
+    auto.show()
+    reg = Registration()
+    main3 = MainWindow()
+    
+    sys.exit(app.exec_())
